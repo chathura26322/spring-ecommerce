@@ -43,7 +43,8 @@ public class  ProductController {
 
     @PostMapping
     public ResponseEntity<ProductDto> createProduct(
-            @RequestBody ProductDto productRequest
+            @RequestBody ProductDto productRequest,
+            UriComponentsBuilder uriComponentsBuilder
     ) {
         var category = categoryRepository.findById(productRequest.getCategoryId()).orElse(null);
         if(category == null) {
@@ -56,7 +57,8 @@ public class  ProductController {
        productRepository.save(product);
        productRequest.setId(product.getId());
 
-       return ResponseEntity.ok(productRequest);
+       var uri  = uriComponentsBuilder.path("/products/{id}").buildAndExpand(product.getId()).toUri();
+       return ResponseEntity.created(uri).body(productRequest);
     }
 
     @PutMapping("/{id}")
