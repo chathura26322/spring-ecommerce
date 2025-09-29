@@ -1,5 +1,6 @@
 package com.codewithmosh.store.controller;
 
+import com.codewithmosh.store.config.JwtConfig;
 import com.codewithmosh.store.dtos.JwtResponse;
 import com.codewithmosh.store.dtos.LoginRequest;
 import com.codewithmosh.store.dtos.UserDto;
@@ -27,6 +28,7 @@ public class AuthController {
     private final UserMapper userMapper;
     private AuthenticationManager  authenticationManager;
     private final JwtService jwtService;
+    private final JwtConfig jwtConfig;
 
     @PostMapping("/login")
     public ResponseEntity<JwtResponse> login(
@@ -48,18 +50,26 @@ public class AuthController {
        var cookie = new Cookie("refresh_token", refreshToken);
        cookie.setHttpOnly(true);
        cookie.setPath("/auth/refresh");
-       cookie.setMaxAge(604800);
+       cookie.setMaxAge(jwtConfig.getAccessTokenExpiration());
        cookie.setSecure(true);
        response.addCookie(cookie);
 
         return ResponseEntity.ok(new JwtResponse(accessToken));
     }
 
-    @PostMapping("/validate")
-    public boolean validate(@RequestHeader("Authorization")  String authHeader){
-        System.out.println("Validating auth header");
-        var token = authHeader.replace("Bearer ", "");
-        return jwtService.validateToken(token);
+    @PostMapping("/refresh")
+    public ResponseEntity<JwtResponse> refreshToken(
+            @CookieValue(value = "refreshToken") String refreshToken 
+    ){
+        if(!jwtService.validateToken(refreshToken)) {
+            return ResponseEntity.status(HttpStatus.UNAUTHORIZED).build();
+        }
+
+        var userId = jwtService.getUserIdFromToken(refreshToken);
+        var user = userRepository.findById(userId).orElseThrow();
+        var accessToken = jwtService.generateAccessToken(user);
+
+        return ResponseEntity.ok(new JwtResponse(accessToken));
     }
 
     @GetMapping("/me")

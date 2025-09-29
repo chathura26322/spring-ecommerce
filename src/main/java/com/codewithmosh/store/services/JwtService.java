@@ -1,29 +1,31 @@
 package com.codewithmosh.store.services;
 
+import com.codewithmosh.store.config.JwtConfig;
+import com.codewithmosh.store.entities.Role;
 import com.codewithmosh.store.entities.User;
 import io.jsonwebtoken.Claims;
 import io.jsonwebtoken.Jwts;
 import io.jsonwebtoken.security.Keys;
+import lombok.AllArgsConstructor;
 import org.springframework.beans.factory.annotation.Value;
 import org.springframework.stereotype.Service;
 
 import java.util.Date;
 
+@AllArgsConstructor
 @Service
 public class JwtService {
 
-    @Value("${spring.jwt.secret}")
-    private String secret;
+    private final JwtConfig jwtConfig;
 
     public String generateAccessToken(User user) {
-        final long tokenExpiration = 300; //5 min
-        return generateToken(user, tokenExpiration);
+
+        return generateToken(user, jwtConfig.getAccessTokenExpiration());
 
     }
 
     public String generateRefreshToken(User user) {
-        final long tokenExpiration = 604800; //7d
-        return generateToken(user, tokenExpiration);
+        return generateToken(user, jwtConfig.getRefreshTokenExpiration());
 
     }
 
@@ -32,9 +34,10 @@ public class JwtService {
                 .subject(user.getId().toString())
                 .claim("email", user.getEmail())
                 .claim("userName", user.getName())
+                .claim("role", user.getRole())
                 .issuedAt(new Date())
                 .expiration(new Date(System.currentTimeMillis() + 1000 * tokenExpiration))
-                .signWith(Keys.hmacShaKeyFor(secret.getBytes()))
+                .signWith(jwtConfig.getSecretKey())
                 .compact();
     }
 
@@ -54,7 +57,7 @@ public class JwtService {
 
     private Claims getClaims(String token) {
         return Jwts.parser()
-                .verifyWith(Keys.hmacShaKeyFor(secret.getBytes()))
+                .verifyWith(jwtConfig.getSecretKey())
                 .build()
                 .parseSignedClaims(token)
                 .getPayload();
@@ -62,6 +65,10 @@ public class JwtService {
 
     public Long getUserIdFromToken(String token) {
         return Long.valueOf(getClaims(token).getSubject());
+    }
+
+    public Role getRoleFromToken(String token) {
+        return Role.valueOf(getClaims(token).get("role", String.class)); 
     }
 
 }
