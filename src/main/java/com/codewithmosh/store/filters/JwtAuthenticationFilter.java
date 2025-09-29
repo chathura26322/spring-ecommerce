@@ -27,15 +27,16 @@ public class JwtAuthenticationFilter extends OncePerRequestFilter {
         }
 
         var token = authHeader.replace("Bearer ", "");
-        if (jwtService.validateToken(token)) {
+        if(jwtService.validateToken(token)) {
             var authentication = new UsernamePasswordAuthenticationToken(
-                    jwtService.getEmailFromToken(token),
+                    jwtService.getUserIdFromToken(token),
                     null,
                     null
             );
             authentication.setDetails(
                     new WebAuthenticationDetailsSource().buildDetails(request)
             );
+
             SecurityContextHolder.getContext().setAuthentication(authentication);
         }
         filterChain.doFilter(request, response);
